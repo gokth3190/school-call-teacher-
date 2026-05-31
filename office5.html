@@ -49,11 +49,34 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 💡 학생 선택창과 일치하도록 "학생안전부실 (동국관 2층)"로 변경했습니다.
     const MY_OFFICE = "학생안전부실 (동국관 2층)"; 
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
     const app = initializeApp(firebaseConfig); const database = getDatabase(app); const callContainer = document.getElementById('callContainer'); const currentCount = document.getElementById('currentCount'); const spokenCalls = new Set(); let isFirstLoad = true; let isAudioUnlocked = false; 
-    function speakCall(teacherName, studentInfo, studentName) { if ('speechSynthesis' in window && isAudioUnlocked) { const textToSpeak = `${teacherName} 선생님, ${studentInfo} ${studentName}이 호출하였습니다.`; window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(textToSpeak); utterance.lang = 'ko-KR'; utterance.rate = 0.95; utterance.pitch = 1.0; window.speechSynthesis.speak(utterance); } }
+    
+    // 🟢 "이주영화학선생님" 형태로 발음을 깔끔하게 처리하는 함수입니다.
+    function speakCall(teacherName, studentInfo, studentName) { 
+        if ('speechSynthesis' in window && isAudioUnlocked) { 
+            // 데이터 내 중간에 들어간 직책 공백과 괄호를 정리합니다.
+            let cleanTeacherName = teacherName
+                .replace(" 선생님", "")
+                .replace(" 교감선생님", "교감")
+                .replace(" 교장선생님", "교장")
+                .replace(" (", "")
+                .replace("(", "")
+                .replace(")", "");
+
+            // 걸러진 조합 마지막에 호칭 "선생님"을 한 번만 추가합니다.
+            const textToSpeak = `${cleanTeacherName}선생님, ${studentInfo} ${studentName}이 호출하였습니다.`; 
+            
+            window.speechSynthesis.cancel(); 
+            const utterance = new SpeechSynthesisUtterance(textToSpeak); 
+            utterance.lang = 'ko-KR'; 
+            utterance.rate = 0.95; 
+            utterance.pitch = 1.0; 
+            window.speechSynthesis.speak(utterance); 
+        } 
+    }
+    
     document.getElementById('unlock-btn').addEventListener('click', () => { isAudioUnlocked = true; document.getElementById('audio-unlock-overlay').style.display = 'none'; if ('speechSynthesis' in window) { window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); } });
     onValue(ref(database, 'calls'), (snapshot) => {
         callContainer.innerHTML = ''; const data = snapshot.val();
