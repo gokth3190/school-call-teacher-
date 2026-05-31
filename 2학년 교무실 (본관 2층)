@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2학년 교무실 호출 대시보드</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Malgun Gothic', sans-serif; }
+        body { background-color: #f5f6fa; padding: 30px 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #dcdde1; flex-wrap: wrap; gap: 15px; }
+        h1 { color: #2f3640; font-size: 26px; } 
+        .stats { font-size: 18px; color: #7f8c8d; font-weight: bold; background: white; padding: 8px 16px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 6px solid #5563de; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+        .card-header { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
+        .student-tag { background: #e1b12c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+        .time-tag { color: #7f8c8d; font-size: 13px; font-weight: bold; }
+        .student-name { font-size: 20px; font-weight: bold; color: #2f3640; margin-bottom: 10px; }
+        .target-teacher { color: #5563de; font-weight: bold; font-size: 15px; margin-bottom: 12px; padding: 6px 0; border-bottom: 1px dashed #eee; line-height: 1.5; }
+        .reason-text { font-size: 15px; color: #353b48; line-height: 1.6; background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px; min-height: 60px; }
+        .btn-complete { width: 100%; padding: 12px; background-color: #4cd137; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; transition: background 0.2s; }
+        .btn-complete:hover { background-color: #44bd32; }
+        .no-data { text-align: center; grid-column: 1 / -1; color: #7f8c8d; font-size: 18px; padding: 120px 0; }
+        .system-status { background-color: #e3faf2; color: #0ca678; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        #audio-unlock-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(47, 54, 64, 0.96); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; padding: 20px; text-align: center; }
+        #audio-unlock-overlay h2 { margin-bottom: 15px; font-size: 26px; }
+        #audio-unlock-overlay p { margin-bottom: 30px; color: #dcdde1; font-size: 15px; line-height: 1.6; max-width: 400px; }
+        #unlock-btn { background: #4cd137; color: white; border: none; padding: 16px 50px; font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(76, 209, 55, 0.4); transition: transform 0.2s; }
+        #unlock-btn:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+<div id="audio-unlock-overlay">
+    <h2>🔔 2학년 교무실 알림 시스템 시작</h2>
+    <p>브라우저 보안 정책으로 인해 아래 버튼을 눌러야 2학년 교무실 실시간 음성(TTS) 안내가 작동합니다.</p>
+    <button id="unlock-btn">대시보드 시작 (소리 켜기)</button>
+</div>
+<div class="container">
+    <header>
+        <h1>🔔 2학년 교무실 호출 실시간 대시보드</h1>
+        <div class="stats" id="currentCount">대기 중인 학생: 0명</div>
+    </header>
+    <div class="system-status">⚡ 2학년 교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</div>
+    <div class="grid" id="callContainer"><div class="no-data">현재 대기 중인 호출이 없습니다.</div></div>
+</div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    
+    const MY_OFFICE = "2학년 교무실 (본관 2층)"; 
+    const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
+    const app = initializeApp(firebaseConfig); const database = getDatabase(app); const callContainer = document.getElementById('callContainer'); const currentCount = document.getElementById('currentCount'); const spokenCalls = new Set(); let isFirstLoad = true; let isAudioUnlocked = false; 
+    function speakCall(teacherName, studentInfo, studentName) { if ('speechSynthesis' in window && isAudioUnlocked) { const textToSpeak = `${teacherName} 선생님, ${studentInfo} ${studentName}이 호출하였습니다.`; window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(textToSpeak); utterance.lang = 'ko-KR'; utterance.rate = 0.95; utterance.pitch = 1.0; window.speechSynthesis.speak(utterance); } }
+    document.getElementById('unlock-btn').addEventListener('click', () => { isAudioUnlocked = true; document.getElementById('audio-unlock-overlay').style.display = 'none'; if ('speechSynthesis' in window) { window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); } });
+    onValue(ref(database, 'calls'), (snapshot) => {
+        callContainer.innerHTML = ''; const data = snapshot.val();
+        if (!data) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; currentCount.textContent = '대기 중인 학생: 0명'; spokenCalls.clear(); isFirstLoad = false; return; }
+        let waitingCount = 0;
+        Object.keys(data).forEach((id) => {
+            const call = data[id];
+            if (call.status === "대기" && call.officeLocation === MY_OFFICE) {
+                waitingCount++; const card = document.createElement('div'); card.className = 'card';
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${call.timestamp.split(' ')[4] || call.timestamp}</span></div><div class="student-name">${call.studentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                callContainer.appendChild(card);
+                if (!isFirstLoad && !spokenCalls.has(id)) { spokenCalls.add(id); speakCall(call.teacherName, call.studentInfo, call.callForm || call.studentName); } else if (isFirstLoad) { spokenCalls.add(id); }
+            }
+        });
+        isFirstLoad = false; currentCount.textContent = `대기 중인 학생: ${waitingCount}명`;
+        if (waitingCount === 0) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; }
+        document.querySelectorAll('.btn-complete').forEach(button => { button.addEventListener('click', function() { remove(ref(database, `calls/${this.getAttribute('data-id')}`)).catch((e) => { alert(e.message); }); }); });
+    });
+</script>
+</body>
+</html>
