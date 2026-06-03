@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>1학년 교무실 호출 대시보드</title>
+    <title>교무실 호출 대시보드</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Malgun Gothic', sans-serif; }
         body { background-color: #f5f6fa; padding: 30px 20px; }
@@ -33,17 +33,17 @@
 </head>
 <body>
 <div id="audio-unlock-overlay">
-    <h2>🔔 1학년 교무실 알림 시스템 시작</h2>
-    <p>브라우저 보안 정책으로 인해 아래 버튼을 눌러야 1학년 교무실 실시간 음성(TTS) 안내가 작동합니다.</p>
+    <h2>🔔 교무실 알림 시스템 시작</h2>
+    <p>브라우저 보안 정책으로 인해 아래 버튼을 눌러야 실시간 음성(TTS) 안내가 작동합니다.</p>
     <button id="unlock-btn">대시보드 시작 (소리 켜기)</button>
 </div>
 
 <div class="container">
     <header>
-        <h1>🔔 1학년 교무실 호출 실시간 대시보드</h1>
+        <h1>🔔 교무실 호출 실시간 대시보드</h1>
         <div class="stats" id="currentCount">대기 중인 학생: 0명</div>
     </header>
-    <div class="system-status">⚡ 1학년 교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</div>
+    <div class="system-status">⚡ 교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</div>
     <div class="grid" id="callContainer"><div class="no-data">현재 대기 중인 호출이 없습니다.</div></div>
 </div>
 
@@ -51,14 +51,21 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 💡 1학년 교무실 위치 매칭 타겟 확인
+    // 💡 [중요] 사용하려는 교무실 환경에 맞게 아래 두 줄 중 하나만 주석을 해제하거나 텍스트를 맞춰주세요.
     const MY_OFFICE = "1학년 교무실 (본관 3층)"; 
+    // const MY_OFFICE = "2학년 교무실 (본관 2층)"; 
+    
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
     const app = initializeApp(firebaseConfig); const database = getDatabase(app); const callContainer = document.getElementById('callContainer'); const currentCount = document.getElementById('currentCount'); const spokenCalls = new Set(); let isFirstLoad = true; let isAudioUnlocked = false; 
     
+    // 제목과 페이지 타이틀을 선택한 교무실 이름으로 자동 변경
+    document.title = `${MY_OFFICE} 호출 대시보드`;
+    document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
+    document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
+
     function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
-            // 정규표현식 기반 가공으로 호칭 중복이나 잔여 괄호 문제를 완전히 방지합니다.
+            // 정규표현식 적용: 괄호, 공백, 중복 호칭 완벽 제거
             let cleanTeacherName = teacherName
                 .replace(/ 선생님/g, "")
                 .replace(/ 교감선생님/g, "교감")
@@ -76,22 +83,25 @@
         } 
     }
     
-    // 모바일 브라우저 오디오 제한 우회를 위한 상호작용 잠금 해제(Click / Touchstart 멀티 바인딩)
-    const unlockBtn = document.getElementById('unlock-btn');
-    ['click', 'touchstart'].forEach(eventType => {
-        unlockBtn.addEventListener(eventType, function(e) {
-            e.preventDefault();
-            isAudioUnlocked = true;
-            document.getElementById('audio-unlock-overlay').style.display = 'none';
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const silentUtterance = new SpeechSynthesisUtterance('');
-                silentUtterance.volume = 0;
-                window.speechSynthesis.speak(silentUtterance);
-            }
-        }, { once: true });
-    });
+    // 시작 버튼(잠금 해제) 로직 최적화: 클릭/터치 시 무조건 작동 및 중복 실행 방지
+    function unlockAudio() {
+        if (isAudioUnlocked) return; 
+        isAudioUnlocked = true;
+        document.getElementById('audio-unlock-overlay').style.display = 'none';
+        
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const silentUtterance = new SpeechSynthesisUtterance('');
+            silentUtterance.volume = 0;
+            window.speechSynthesis.speak(silentUtterance);
+        }
+    }
 
+    const unlockBtn = document.getElementById('unlock-btn');
+    unlockBtn.addEventListener('click', unlockAudio);
+    unlockBtn.addEventListener('touchstart', unlockAudio, { passive: true });
+
+    // Firebase 실시간 리스너 연결
     onValue(ref(database, 'calls'), (snapshot) => {
         callContainer.innerHTML = ''; const data = snapshot.val();
         if (!data) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; currentCount.textContent = '대기 중인 학생: 0명'; spokenCalls.clear(); isFirstLoad = false; return; }
@@ -104,11 +114,11 @@
                 const card = document.createElement('div'); 
                 card.className = 'card';
                 
-                // 💡 [오류 수정] 기기 환경별 유동적인 타임스탬프 형식에 완벽하게 대응
+                // 유동적인 타임스탬프 문자열 포맷에 안전하게 대응하는 로직
                 let displayTime = call.timestamp || "방금 전";
                 if (call.timestamp && (call.timestamp.includes("오후") || call.timestamp.includes("오전"))) {
                     const timeParts = call.timestamp.split(" ");
-                    displayTime = timeParts.slice(-2).join(" "); // '오후 시:분:초'만 유연하게 파싱
+                    displayTime = timeParts.slice(-2).join(" "); // 문자열의 마지막 두 단어(오후 시:분:초)만 안전하게 결합
                 }
 
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
