@@ -68,16 +68,28 @@
             let cleanStudentName = studentName.replace(/학생/g, "").trim();
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [핵심 치트키] '학생이'의 자모음 인식을 강제하기 위해 글자마다 공백 분리('학 생 이') 처리
-            // 브라우저 엔진이 축약 버그를 일으키지 못하고 또박또박 발음하도록 강제 픽스했습니다.
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${cleanStudentName} 학 생 이 호출하였습니다.`; 
+            // 🟢 [완벽 해결 치트키] 브라우저 엔진이 이름을 조사로 마음대로 바꾸지 못하도록
+            // 1번 문장(선생님, 학생 정보)과 2번 문장(학생이 호출하였습니다)을 완벽하게 쪼개서 차례대로 재생합니다.
+            const part1Text = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${cleanStudentName}`;
+            const part2Text = `학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
-            const utterance = new SpeechSynthesisUtterance(textToSpeak); 
-            utterance.lang = 'ko-KR'; 
-            utterance.rate = 0.88; // 자음 모음이 씹히지 않게 속도를 아주 살짝 안정화했습니다.
-            utterance.pitch = 1.0; 
-            window.speechSynthesis.speak(utterance); 
+            
+            // 첫 번째 파트 (선생님 이름 + 학생 정보)
+            const utterance1 = new SpeechSynthesisUtterance(part1Text); 
+            utterance1.lang = 'ko-KR'; 
+            utterance1.rate = 0.90; 
+            utterance1.pitch = 1.0; 
+
+            // 두 번째 파트 (강제로 무조건 "학생이 호출하였습니다" 라고 읽게 만듦)
+            const utterance2 = new SpeechSynthesisUtterance(part2Text);
+            utterance2.lang = 'ko-KR';
+            utterance2.rate = 0.90;
+            utterance2.pitch = 1.0;
+
+            // 차례대로 이어서 음성 실행
+            window.speechSynthesis.speak(utterance1);
+            window.speechSynthesis.speak(utterance2);
         } 
     }
     
