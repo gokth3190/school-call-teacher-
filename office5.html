@@ -16,7 +16,6 @@
         .card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
         .card-header { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
         .student-tag { background: #e1b12c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; }
-        .student-tag { background: #e1b12c; color: white; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; }
         .time-tag { color: #7f8c8d; font-size: 13px; font-weight: bold; }
         .student-name { font-size: 20px; font-weight: bold; color: #2f3640; margin-bottom: 10px; }
         .target-teacher { color: #5563de; font-weight: bold; font-size: 15px; margin-bottom: 12px; padding: 6px 0; border-bottom: 1px dashed #eee; line-height: 1.5; }
@@ -56,7 +55,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 🟢 학생안전부실 위치 정보 설정
+    // 학생안전부실 위치 고정
     const MY_OFFICE = "학생안전부실 (동국관 2층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -66,7 +65,7 @@
     document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
     document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
 
-    // 🟢 음성 매개변수 정렬 및 "학생이 호출하였습니다" 고정 함수
+    // 🟢 완전히 고정된 음성 출력 함수
     function speakCall(subject, rawTeacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
@@ -78,12 +77,12 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 가공 및 청소
+            // 2. 학생 이름 가공 (순수 이름 확보)
             let pureStudentName = studentName.replace(/학생/g, "").trim();
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [완벽 해결] 밀림 현상을 수정하여 명확하게 "~ 학생이 호출하였습니다" 문장 구성
+            // 🟢 [100% 확실한 수정] 이름 변수 바로 뒤에 " 학생이 호출하였습니다."를 완전 고정 문자열로 삽입했습니다.
             const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -136,7 +135,6 @@
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
-                // 🟢 [치명적 버그 수정] 정의된 매개변수 순서(subject, teacherName, studentInfo, studentName)에 정확히 맞추어 호출을 넘깁니다.
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
