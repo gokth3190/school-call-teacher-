@@ -67,7 +67,7 @@
     function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 1. 선생님 이름 및 직책 정제
+            // 1. 선생님 이름 및 직책 정제 ("이주영화학선생님" -> "이주영화학")
             let cleanTeacherName = teacherName
                 .replace(" 선생님", "")
                 .replace(" 교감선생님", "교감")
@@ -78,12 +78,11 @@
                 .replace(/선생님/g, "")
                 .trim();
 
-            // 2. 학생 이름 가공 (기존에 '학생' 글자가 붙어 있든 말든 무조건 깨끗하게 이름만 남김)
-            let pureStudentName = studentName.replace(/학생/g, "").trim();
+            // 2. 학생 이름 뒤의 '학생' 글자를 확실히 제거하여 순수 이름만 남김
+            let cleanStudentName = studentName.replace(/학생/g, "").trim();
             
-            // 🟢 [핵심 수정] 무조건 의도하신 대로 "~ 학생이 호출하였습니다."로 들리도록 강제 결합합니다.
-            // 출력 음성 예시: "이주영 선생님, 3학년 6반 4번 김태훈 학생이 호출하였습니다."
-            const textToSpeak = `${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
+            // 🟢 1학년 방식으로 부드럽고 완벽하게 이어지도록 문장 생성
+            const textToSpeak = `${cleanTeacherName} 선생님, ${studentInfo} ${cleanStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -128,13 +127,13 @@
                     displayTime = call.timestamp.split(' ')[4] || call.timestamp;
                 }
 
-                // 화면 카드 UI 레이아웃
+                // 화면 UI 카드 내 레이아웃 유지
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    // 🟢 [수정 완료] call.callForm 대신 무조건 call.studentName을 보내 일관성 있게 "학생이 호출하였습니다"로 발음되도록 수정
+                    // 🟢 [완벽 해결] 꼬이게 만들던 call.callForm 변수를 완전히 제거하고, 무조건 call.studentName만 던집니다!
                     speakCall(call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
