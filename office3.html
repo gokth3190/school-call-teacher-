@@ -55,7 +55,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 🟢 3학년 교무실 전용 세팅 고정
     const MY_OFFICE = "3학년 교무실 (동국관 4층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -68,7 +67,7 @@
     function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 1. 선생님 이름 및 직책 정제 ("이주영화학선생님" -> "이주영화학")
+            // 1. 선생님 이름 및 직책 정제
             let cleanTeacherName = teacherName
                 .replace(" 선생님", "")
                 .replace(" 교감선생님", "교감")
@@ -79,12 +78,12 @@
                 .replace(/선생님/g, "")
                 .trim();
 
-            // 2. 학생 이름 뒤의 '학생' 글자를 확실히 제거하여 순수 이름만 추출
+            // 2. 학생 이름 가공 (기존에 '학생' 글자가 붙어 있든 말든 무조건 깨끗하게 이름만 남김)
             let pureStudentName = studentName.replace(/학생/g, "").trim();
             
-            // 🟢 [2학년 성공 치트키 적용] 문맥을 쪼개지 않고 이름 뒤에 '님,'을 붙여 부드러운 한 문장으로 만듭니다.
-            // 음성 출력: "[선생님이름] 선생님, [학번정보] [이름] 님, 학생이 호출하였습니다."
-            const textToSpeak = `${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 님, 학생이 호출하였습니다.`; 
+            // 🟢 [핵심 수정] 무조건 의도하신 대로 "~ 학생이 호출하였습니다."로 들리도록 강제 결합합니다.
+            // 출력 음성 예시: "이주영 선생님, 3학년 6반 4번 김태훈 학생이 호출하였습니다."
+            const textToSpeak = `${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -129,13 +128,14 @@
                     displayTime = call.timestamp.split(' ')[4] || call.timestamp;
                 }
 
-                // 화면 카드 내부 레이아웃은 깔끔하게 원래대로 "~ 학생" 구조를 유지합니다.
+                // 화면 카드 UI 레이아웃
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    speakCall(call.teacherName, call.studentInfo, call.callForm || call.studentName); 
+                    // 🟢 [수정 완료] call.callForm 대신 무조건 call.studentName을 보내 일관성 있게 "학생이 호출하였습니다"로 발음되도록 수정
+                    speakCall(call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
                 }
