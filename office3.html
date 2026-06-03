@@ -67,7 +67,6 @@
     function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 1. 선생님 이름 정제
             let cleanTeacherName = teacherName
                 .replace(" 선생님", "")
                 .replace(" 교감선생님", "교감")
@@ -78,12 +77,10 @@
                 .replace(/선생님/g, "")
                 .trim();
 
-            // 2. 학생 이름 및 학반 정보의 모든 공백을 제거하여 버그 차단
             let pureStudentName = studentName.replace(/학생/g, "").trim();
-            let tightStudentInfo = studentInfo.replace(/\s+/g, ""); // "3학년 6반 4번" -> "3학년6반4번"
+            let tightStudentInfo = studentInfo.replace(/\s+/g, ""); 
             
-            // 🟢 [버그 완전 격파] 공백을 완전히 없애서 강제로 하나의 덩어리로 읽게 만듭니다.
-            // 엔진이 인식하는 글자: "이주영 선생님, 3학년6반4번김태훈학생이 호출하였습니다."
+            // 🟢 음성 텍스트를 생성합니다.
             const textToSpeak = `${cleanTeacherName} 선생님, ${tightStudentInfo}${pureStudentName}학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -129,13 +126,14 @@
                     displayTime = call.timestamp.split(' ')[4] || call.timestamp;
                 }
 
-                // 화면 UI 카드는 보시기 편하게 기존 띄어쓰기 모양 그대로 유지합니다.
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                let finalName = call.studentName.replace(/학생/g, "").trim();
+
+                // 🟢 [핵심 수정] 화면의 카드 텍스트 자체를 음성 버그를 유발하지 않도록 "~학생이" 형태로 강제 일치시킵니다.
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${finalName}학생이</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    // 무조건 call.studentName을 호출하여 변수 꼬임 방지
                     speakCall(call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
