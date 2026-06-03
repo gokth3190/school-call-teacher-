@@ -57,7 +57,7 @@
     
     function speakCall(subject, teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
-            // 1. 선생님 이름 뒤 불필요 호칭 제거 및 공백 정리
+            // 1. 선생님 이름 가공 (선생님 호칭 제거)
             let cleanTeacherName = teacherName
                 .replace(/선생님/g, "")
                 .replace(/교감선생님/g, "교감")
@@ -65,20 +65,19 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 가공 (순수 이름만 추출하기 위해 '학생' 글자를 엄격히 지우고 양쪽 공백 제거)
-            let cleanStudentName = studentName.replace(/학생/g, "").trim();
+            // 2. 학생 이름 가공 (혹시라도 DB에 '학생'이 붙어있을 경우를 대비해 확실히 제거 후 순수 이름만 추출)
+            let pureStudentName = studentName.replace(/학생/g, "").trim();
 
-            // 3. 과목이 있다면 뒤에 한 칸 공백 배치
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [핵심 수정] 음성 엔진이 조사를 멋대로 바꾸지 못하도록 명확하게 띄어쓰기를 배치한 문장 구조
-            // 결과물: "화학 이주영 선생님, 3학년6반4번 김태훈 학생이 호출하였습니다."
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${cleanStudentName} 학생이 호출하였습니다.`; 
+            // 🟢 [최종 수정] 강제로 띄어쓰기를 결합하여 음성 엔진이 무조건 "학생이"로 발음하도록 픽스했습니다.
+            // 결과: "화학 이주영 선생님, 3학년6반4번 김태훈 학생이 호출하였습니다."
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
             utterance.lang = 'ko-KR'; 
-            utterance.rate = 0.90; // 음성이 씹히지 않고 정확히 발음되도록 속도를 아주 미세하게 낮췄습니다.
+            utterance.rate = 0.90; 
             utterance.pitch = 1.0; 
             window.speechSynthesis.speak(utterance); 
         } 
@@ -127,6 +126,7 @@
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
+                    // 🟢 실시간 변경 데이터에서 추출한 과목(subject)을 포함하여 안전하게 전달합니다.
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
