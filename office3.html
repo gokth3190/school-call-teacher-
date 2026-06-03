@@ -67,6 +67,7 @@
     function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
+            // 1. 선생님 이름 완벽 정제
             let cleanTeacherName = teacherName
                 .replace(" 선생님", "")
                 .replace(" 교감선생님", "교감")
@@ -77,11 +78,17 @@
                 .replace(/선생님/g, "")
                 .trim();
 
-            let pureStudentName = studentName.replace(/학생/g, "").trim();
+            // 2. [버그 박멸 핵심] DB에 '김태훈', '김태훈학생', '김태훈 학생' 등 어떻게 들어와있든 무조건 이름만 추출
+            let pureStudentName = studentName
+                .replace(/학생/g, "")
+                .replace(/이/g, "")
+                .trim();
+                
             let tightStudentInfo = studentInfo.replace(/\s+/g, ""); 
             
-            // 🟢 음성 텍스트를 생성합니다.
-            const textToSpeak = `${cleanTeacherName} 선생님, ${tightStudentInfo}${pureStudentName}학생이 호출하였습니다.`; 
+            // 🟢 강제로 정확히 딱 한번만 "학생이"가 붙도록 문장 조합
+            // 결과: "이주영 선생님, 3학년6반4번김태훈 학생이 호출하였습니다."
+            const textToSpeak = `${cleanTeacherName} 선생님, ${tightStudentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -126,14 +133,15 @@
                     displayTime = call.timestamp.split(' ')[4] || call.timestamp;
                 }
 
-                let finalName = call.studentName.replace(/학생/g, "").trim();
+                // UI 화면에도 깔끔하게 이름만 추출 후 "학생" 표시 고정
+                let uiStudentName = call.studentName.replace(/학생/g, "").trim();
 
-                // 🟢 [핵심 수정] 화면의 카드 텍스트 자체를 음성 버그를 유발하지 않도록 "~학생이" 형태로 강제 일치시킵니다.
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${finalName}학생이</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${uiStudentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
+                    // 무조건 call.studentName만 던져서 완벽 제어합니다.
                     speakCall(call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
