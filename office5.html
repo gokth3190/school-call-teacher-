@@ -52,10 +52,9 @@
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js?v=1.0.1";
+    import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js?v=1.0.1";
     
-    // 학생안전부실 위치 고정
     const MY_OFFICE = "학생안전부실 (동국관 2층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -65,11 +64,9 @@
     document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
     document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
 
-    // 🟢 음성 출력 핵심 함수
     function speakCall(subject, rawTeacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 교사 이름 정제
             let cleanTeacherName = rawTeacherName
                 .replace(/선생님/g, "")
                 .replace(/교감선생님/g, "교감")
@@ -77,11 +74,10 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 학생 이름 정제 및 순수 이름 추출 ("김태훈 학생" -> "김태훈")
             let pureStudentName = studentName.replace(/학생/g, "").trim();
             const subjectText = subject ? `${subject} ` : "";
             
-            // ⭕ [핵심 고정] 조사 "이"가 붙지 않도록 " 학생이 호출하였습니다." 문자열을 강제 조립
+            // ⭕ [문장 완전 고정] "학생이 호출하였습니다" 글자를 완벽히 못 박았습니다.
             const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -134,7 +130,7 @@
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
-                // ⭕ [조건문 버그 해결] 첫 로딩 유무와 상관없이 말하지 않은 호출 데이터는 무조건 고정 규칙을 타도록 수정
+                // 첫 로딩이든 아니든 기존 말뚝 초기화 버그 완전 차단
                 if (!spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
