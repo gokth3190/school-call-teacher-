@@ -65,11 +65,11 @@
     document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
     document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
 
-    // 🟢 완전히 고정된 음성 출력 함수
+    // 🟢 음성 출력 핵심 함수
     function speakCall(subject, rawTeacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 1. 교사 이름 정제
+            // 교사 이름 정제
             let cleanTeacherName = rawTeacherName
                 .replace(/선생님/g, "")
                 .replace(/교감선생님/g, "교감")
@@ -77,12 +77,11 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 가공 (순수 이름 확보)
+            // 학생 이름 정제 및 순수 이름 추출 ("김태훈 학생" -> "김태훈")
             let pureStudentName = studentName.replace(/학생/g, "").trim();
-
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [100% 확실한 수정] 이름 변수 바로 뒤에 " 학생이 호출하였습니다."를 완전 고정 문자열로 삽입했습니다.
+            // ⭕ [핵심 고정] 조사 "이"가 붙지 않도록 " 학생이 호출하였습니다." 문자열을 강제 조립
             const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -135,11 +134,10 @@
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
-                if (!isFirstLoad && !spokenCalls.has(id)) { 
+                // ⭕ [조건문 버그 해결] 첫 로딩 유무와 상관없이 말하지 않은 호출 데이터는 무조건 고정 규칙을 타도록 수정
+                if (!spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
-                } else if (isFirstLoad) { 
-                    spokenCalls.add(id); 
                 }
             }
         });
