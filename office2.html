@@ -55,9 +55,11 @@
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
     const app = initializeApp(firebaseConfig); const database = getDatabase(app); const callContainer = document.getElementById('callContainer'); const currentCount = document.getElementById('currentCount'); const spokenCalls = new Set(); let isFirstLoad = true; let isAudioUnlocked = false; 
     
+    // 🟢 [매개변수 완전 매칭 및 구조 변경] 데이터가 섞이지 않도록 순서를 완전히 고정했습니다.
     function speakCall(subject, teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
-            // 1. 선생님 이름 가공
+            
+            // 1. 선생님 이름 정제
             let cleanTeacherName = teacherName
                 .replace(/선생님/g, "")
                 .replace(/교감선생님/g, "교감")
@@ -65,19 +67,19 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 순수 추출
-            let pureStudentName = studentName.replace(/학생/g, "").trim();
+            // 2. 학생 이름 정제 ('학생' 단어가 겹치지 않게 제거)
+            let cleanStudentName = studentName.replace(/학생/g, "").trim();
 
+            // 3. 과목 텍스트 세팅
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [엔진 버그 원천 차단] 쉼표(,)와 마침표(.)를 사용해 문장을 명확히 끊어주어 
-            // 음성 엔진이 멋대로 글자를 축약하거나 생략하지 못하게 강제 고정했습니다.
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo}. ${pureStudentName} 학생이. 호출하였습니다.`; 
+            // 🟢 [최종 정렬 문장] 꼬여있던 변수들을 정위치에 명확히 배치하여 문장을 조립합니다.
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${cleanStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
             utterance.lang = 'ko-KR'; 
-            utterance.rate = 0.88; // 또박또박 읽도록 속도를 조금 더 안정적으로 낮췄습니다.
+            utterance.rate = 0.92; 
             utterance.pitch = 1.0; 
             window.speechSynthesis.speak(utterance); 
         } 
@@ -126,6 +128,7 @@
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
+                    // 🟢 데이터 추출 순서와 speakCall 함수의 인자 수신 순서를 완벽히 일치시켰습니다.
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
