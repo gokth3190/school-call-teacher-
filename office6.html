@@ -55,7 +55,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 🟢 1. 기타 특별실로 고정
+    // 기타 특별실 매칭 고정
     const MY_OFFICE = "기타 특별실 (상담/진로/보건 등)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -75,13 +75,14 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 데이터에 '학생'이 있든 없든 다 지우고 깔끔한 순수 이름만 추출
-            let pureStudentName = studentName.replace(/학생/g, "").trim();
+            // 🟢 [버그 원인 제거] 복잡한 치환을 전면 생략하고, 이름에 '학생'이 이미 포함되어 있는지 여부만 체크합니다.
+            let inputName = studentName.trim();
+            let finalStudentText = inputName.endsWith("학생") ? inputName : `${inputName} 학생`;
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 2. [발음 절대 고정] 무조건 "이름 + 학생이 호출하였습니다."로 조립되도록 수정
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
+            // 🟢 이제 확실하게 "홍길동 학생이 호출하였습니다." 문자열이 단단하게 결합됩니다.
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${finalStudentText}이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -109,7 +110,7 @@
     unlockBtn.addEventListener('click', unlockAudio);
     unlockBtn.addEventListener('touchstart', unlockAudio, { passive: true });
 
-    // 선생님의 검증된 원본 흐름 100% 유지
+    // 검증된 3학년 원본 소스 로직 완벽 유지
     onValue(ref(database, 'calls'), (snapshot) => {
         callContainer.innerHTML = ''; const data = snapshot.val();
         if (!data) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; currentCount.textContent = '대기 중인 학생: 0명'; spokenCalls.clear(); isFirstLoad = false; return; }
@@ -131,15 +132,15 @@
                 const subject = call.subject || ""; 
                 const displayTeacher = subject ? `[${subject}] ${call.teacherName}` : call.teacherName;
 
-                // 화면 UI 글자 정제
-                const uiStudentName = call.studentName.replace(/학생/g, "").trim();
+                // UI 표기용 이름 (화면에는 항상 '이름 학생' 형태로 이쁘게 나오게 고정)
+                let uiName = call.studentName.replace(/학생/g, "").trim();
 
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${uiStudentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${uiName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    // speakCall 함수로 깨끗한 원본 이름 데이터를 전달합니다.
+                    // 데이터 가공 없이 원본 이름을 speakCall 함수로 훼손 없이 안전하게 넘깁니다.
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
