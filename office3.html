@@ -55,6 +55,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
+    // 🟢 3학년 교무실 정보로 정확하게 변경
     const MY_OFFICE = "3학년 교무실 (동국관 4층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -64,30 +65,22 @@
     document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
     document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
 
-    function speakCall(teacherName, studentInfo, studentName) { 
+    function speakCall(subject, rawTeacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 1. 선생님 이름 정제
-            let cleanTeacherName = teacherName
-                .replace(" 선생님", "")
-                .replace(" 교감선생님", "교감")
-                .replace(" 교장선생님", "교장")
-                .replace(" (", "")
-                .replace("(", "")
-                .replace(")", "")
+            let cleanTeacherName = rawTeacherName
                 .replace(/선생님/g, "")
+                .replace(/교감선생님/g, "교감")
+                .replace(/교장선생님/g, "교장")
+                .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 가공 (어떤 데이터가 오든 순수한 이름만 남기기)
-            let pureStudentName = studentName
-                .replace(/학생/g, "")
-                .replace(/이/g, "")
-                .trim();
-                
-            let tightStudentInfo = studentInfo.replace(/\s+/g, ""); 
+            let pureStudentName = studentName.replace(/학생/g, "").trim();
+
+            const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 정확하게 딱 한 번만 "학생이 호출하였습니다." 문자열 빌드
-            const textToSpeak = `${cleanTeacherName} 선생님, ${tightStudentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
+            // 🟢 오류를 발생시키지 않았던 검증된 2학년 고유의 쉼표(,) + "님, 학생이" 조합 메커니즘 유지
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 님, 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -105,7 +98,7 @@
         
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
-            const silentUtterance = new SynthesisUtterance('');
+            const silentUtterance = new SpeechSynthesisUtterance('');
             silentUtterance.volume = 0;
             window.speechSynthesis.speak(silentUtterance);
         }
@@ -128,19 +121,20 @@
                 card.className = 'card';
                 
                 let displayTime = call.timestamp || "방금 전";
-                if (call.timestamp && call.timestamp.includes(' ')) {
-                    displayTime = call.timestamp.split(' ')[4] || call.timestamp;
+                if (call.timestamp && (call.timestamp.includes("오후") || call.timestamp.includes("오전"))) {
+                    const timeParts = call.timestamp.split(" ");
+                    displayTime = timeParts.slice(-2).join(" "); 
                 }
 
-                let uiStudentName = call.studentName.replace(/학생/g, "").trim();
+                const subject = call.subject || ""; 
+                const displayTeacher = subject ? `[${subject}] ${call.teacherName}` : call.teacherName;
 
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${uiStudentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    // 🟢 [완벽 해결] 꼬이게 만들던 모든 복병 변수(callForm 등)를 완벽히 지우고, 무조건 call.studentName만 매개변수로 던집니다.
-                    speakCall(call.teacherName, call.studentInfo, call.studentName); 
+                    speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
                 }
