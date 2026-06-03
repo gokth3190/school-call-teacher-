@@ -46,7 +46,7 @@
         <div class="stats" id="currentCount">대기 중인 학생: 0명</div>
     </header>
     <div class="system-status">
-        <span>⚡ 교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</span>
+        <span>⚡ 본교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</span>
     </div>
     <div class="grid" id="callContainer"><div class="no-data">현재 대기 중인 호출이 없습니다.</div></div>
 </div>
@@ -55,6 +55,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
+    // 🟢 본교무실 정보 고정
     const MY_OFFICE = "본교무실 (본관 1층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -64,26 +65,32 @@
     document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
     document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
 
-    function speakCall(subject, rawTeacherName, studentInfo, studentName) { 
+    // 🟢 음성 호출 함수 (버그 박멸 버전)
+    function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            let cleanTeacherName = rawTeacherName
-                .replace(/선생님/g, "")
-                .replace(/교감선생님/g, "교감")
-                .replace(/교장선생님/g, "교장")
+            // 1. 선생님 이름 및 직책 정제
+            let cleanTeacherName = teacherName
+                .replace(" 선생님", "")
+                .replace(" 교감선생님", "교감")
+                .replace(" 교장선생님", "교장")
                 .replace(/[()\s]/g, "")
+                .replace(/선생님/g, "")
                 .trim();
 
-            // 학생 이름 뒤에 붙어있을지도 모르는 '학생' 혹은 조사를 완전히 제거
+            // 2. 학생 이름 정제 (이름 뒤에 붙은 너저분한 조사를 다 지움)
             let pureStudentName = studentName
                 .replace(/학생/g, "")
                 .replace(/이/g, "")
+                .replace(/가/g, "")
                 .trim();
-
-            const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [수정] "김태훈 학생이 호출하였습니다."로 들리도록 자연스럽게 문장 조립
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
+            // 3. 반/번 정보 공백 제거 ("1학년 1반 1번" -> "1학년1반1번")
+            let tightStudentInfo = studentInfo.replace(/\s+/g, ""); 
+            
+            // 🟢 [핵심] "김태훈 학생이 호출하였습니다"로 완벽하게 문장 조립
+            // 공백을 조절하여 음성 엔진이 딴생각을 못하게 함
+            const textToSpeak = `${cleanTeacherName} 선생님, ${tightStudentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -124,20 +131,18 @@
                 card.className = 'card';
                 
                 let displayTime = call.timestamp || "방금 전";
-                if (call.timestamp && (call.timestamp.includes("오후") || call.timestamp.includes("오전"))) {
-                    const timeParts = call.timestamp.split(" ");
-                    displayTime = timeParts.slice(-2).join(" "); 
+                if (call.timestamp && call.timestamp.includes(' ')) {
+                    displayTime = call.timestamp.split(' ')[4] || call.timestamp;
                 }
 
-                const subject = call.subject || ""; 
-                const displayTeacher = subject ? `[${subject}] ${call.teacherName}` : call.teacherName;
-
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                // 화면 카드 UI
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
+                // 음성 안내 실행
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
+                    speakCall(call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
                 }
