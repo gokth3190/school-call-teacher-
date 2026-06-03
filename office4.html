@@ -23,7 +23,8 @@
         .btn-complete { width: 100%; padding: 12px; background-color: #4cd137; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; transition: background 0.2s; }
         .btn-complete:hover { background-color: #44bd32; }
         .no-data { text-align: center; grid-column: 1 / -1; color: #7f8c8d; font-size: 18px; padding: 120px 0; }
-        .system-status { background-color: #e3faf2; color: #0ca678; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .system-status { background-color: #e3faf2; color: #0ca678; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; }
+        
         #audio-unlock-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(47, 54, 64, 0.96); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; padding: 20px; text-align: center; }
         #audio-unlock-overlay h2 { margin-bottom: 15px; font-size: 26px; }
         #audio-unlock-overlay p { margin-bottom: 30px; color: #dcdde1; font-size: 15px; line-height: 1.6; max-width: 400px; }
@@ -32,68 +33,125 @@
     </style>
 </head>
 <body>
+
 <div id="audio-unlock-overlay">
     <h2>🔔 본교무실 알림 시스템 시작</h2>
-    <p>브라우저 보안 정책으로 인해 아래 버튼을 눌러야 본교무실 실시간 음성(TTS) 안내가 작동합니다.</p>
+    <p>브라우저 보안 정책으로 인해 아래 버튼을 눌러야 실시간 음성(TTS) 안내가 작동합니다.</p>
     <button id="unlock-btn">대시보드 시작 (소리 켜기)</button>
 </div>
+
 <div class="container">
     <header>
         <h1>🔔 본교무실 호출 실시간 대시보드</h1>
         <div class="stats" id="currentCount">대기 중인 학생: 0명</div>
     </header>
-    <div class="system-status">⚡ 본교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</div>
+    <div class="system-status">
+        <span>⚡ 교무실 전용 화면입니다. 모니터링 기기의 화면이 켜져 있어야 음성 가이드가 작동합니다.</span>
+    </div>
     <div class="grid" id="callContainer"><div class="no-data">현재 대기 중인 호출이 없습니다.</div></div>
 </div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
+    // 🟢 본교무실 정보 설정
     const MY_OFFICE = "본교무실 (본관 1층)"; 
+    
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
     const app = initializeApp(firebaseConfig); const database = getDatabase(app); const callContainer = document.getElementById('callContainer'); const currentCount = document.getElementById('currentCount'); const spokenCalls = new Set(); let isFirstLoad = true; let isAudioUnlocked = false; 
     
-    // 🟢 "이주영화학선생님" 형태로 문구를 치환하여 음성(TTS)을 출력하는 함수입니다.
-    function speakCall(teacherName, studentInfo, studentName) { 
-        if ('speechSynthesis' in window && isAudioUnlocked) { 
-            // 수신된 교사 텍스트 데이터의 서식을 정제합니다.
-            let cleanTeacherName = teacherName
-                .replace(" 선생님", "")
-                .replace(" 교감선생님", "교감")
-                .replace(" 교장선생님", "교장")
-                .replace(" (", "")
-                .replace("(", "")
-                .replace(")", "");
+    document.title = `${MY_OFFICE} 호출 대시보드`;
+    document.querySelector('h1').textContent = `🔔 ${MY_OFFICE} 호출 실시간 대시보드`;
+    document.querySelector('#audio-unlock-overlay h2').textContent = `🔔 ${MY_OFFICE} 알림 시스템 시작`;
 
-            // 필터링이 완료된 문자열 끝에 "선생님"을 한 번만 이어 붙입니다.
-            const textToSpeak = `${cleanTeacherName}선생님, ${studentInfo} ${studentName}이 호출하였습니다.`; 
+    function speakCall(subject, rawTeacherName, studentInfo, studentName) { 
+        if ('speechSynthesis' in window && isAudioUnlocked) { 
+            
+            // 1. 선생님 이름 정제
+            let cleanTeacherName = rawTeacherName
+                .replace(/선생님/g, "")
+                .replace(/교감선생님/g, "교감")
+                .replace(/교장선생님/g, "교장")
+                .replace(/[()\s]/g, "")
+                .trim();
+
+            // 2. 학생 이름 뒤의 '학생' 글자 제거
+            let pureStudentName = studentName.replace(/학생/g, "").trim();
+
+            const subjectText = subject ? `${subject} ` : "";
+            
+            // 🟢 검증된 2학년 고유의 쉼표(,) + "님, 학생이" 조합 메커니즘을 그대로 적용
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 님, 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
             utterance.lang = 'ko-KR'; 
-            utterance.rate = 0.95; 
+            utterance.rate = 0.92; 
             utterance.pitch = 1.0; 
             window.speechSynthesis.speak(utterance); 
         } 
     }
     
-    document.getElementById('unlock-btn').addEventListener('click', () => { isAudioUnlocked = true; document.getElementById('audio-unlock-overlay').style.display = 'none'; if ('speechSynthesis' in window) { window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); } });
+    function unlockAudio() {
+        if (isAudioUnlocked) return;
+        isAudioUnlocked = true;
+        document.getElementById('audio-unlock-overlay').style.display = 'none';
+        
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const silentUtterance = new SpeechSynthesisUtterance('');
+            silentUtterance.volume = 0;
+            window.speechSynthesis.speak(silentUtterance);
+        }
+    }
+
+    const unlockBtn = document.getElementById('unlock-btn');
+    unlockBtn.addEventListener('click', unlockAudio);
+    unlockBtn.addEventListener('touchstart', unlockAudio, { passive: true });
+
     onValue(ref(database, 'calls'), (snapshot) => {
         callContainer.innerHTML = ''; const data = snapshot.val();
         if (!data) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; currentCount.textContent = '대기 중인 학생: 0명'; spokenCalls.clear(); isFirstLoad = false; return; }
+        
         let waitingCount = 0;
         Object.keys(data).forEach((id) => {
             const call = data[id];
             if (call.status === "대기" && call.officeLocation === MY_OFFICE) {
-                waitingCount++; const card = document.createElement('div'); card.className = 'card';
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${call.timestamp.split(' ')[4] || call.timestamp}</span></div><div class="student-name">${call.studentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                waitingCount++; 
+                const card = document.createElement('div'); 
+                card.className = 'card';
+                
+                let displayTime = call.timestamp || "방금 전";
+                if (call.timestamp && (call.timestamp.includes("오후") || call.timestamp.includes("오전"))) {
+                    const timeParts = call.timestamp.split(" ");
+                    displayTime = timeParts.slice(-2).join(" "); 
+                }
+
+                const subject = call.subject || ""; 
+                const displayTeacher = subject ? `[${subject}] ${call.teacherName}` : call.teacherName;
+
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
-                if (!isFirstLoad && !spokenCalls.has(id)) { spokenCalls.add(id); speakCall(call.teacherName, call.studentInfo, call.callForm || call.studentName); } else if (isFirstLoad) { spokenCalls.add(id); }
+                
+                // 🟢 버그를 터뜨리던 call.callForm 대신 무조건 순수 변수만 전송하도록 확실하게 구조 일치
+                if (!isFirstLoad && !spokenCalls.has(id)) { 
+                    spokenCalls.add(id); 
+                    speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
+                } else if (isFirstLoad) { 
+                    spokenCalls.add(id); 
+                }
             }
         });
         isFirstLoad = false; currentCount.textContent = `대기 중인 학생: ${waitingCount}명`;
         if (waitingCount === 0) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; }
-        document.querySelectorAll('.btn-complete').forEach(button => { button.addEventListener('click', function() { remove(ref(database, `calls/${this.getAttribute('data-id')}`)).catch((e) => { alert(e.message); }); }); });
+        
+        document.querySelectorAll('.btn-complete').forEach(button => { 
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                remove(ref(database, `calls/${this.getAttribute('data-id')}`)).catch((e) => { alert(e.message); }); 
+            }); 
+        });
     });
 </script>
 </body>
