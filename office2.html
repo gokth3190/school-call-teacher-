@@ -57,7 +57,7 @@
     
     function speakCall(subject, teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
-            // 1. 선생님 이름 가공 (선생님 호칭 제거)
+            // 1. 선생님 이름 가공
             let cleanTeacherName = teacherName
                 .replace(/선생님/g, "")
                 .replace(/교감선생님/g, "교감")
@@ -65,19 +65,19 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 가공 (혹시라도 DB에 '학생'이 붙어있을 경우를 대비해 확실히 제거 후 순수 이름만 추출)
+            // 2. 학생 이름 순수 추출
             let pureStudentName = studentName.replace(/학생/g, "").trim();
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 [최종 수정] 강제로 띄어쓰기를 결합하여 음성 엔진이 무조건 "학생이"로 발음하도록 픽스했습니다.
-            // 결과: "화학 이주영 선생님, 3학년6반4번 김태훈 학생이 호출하였습니다."
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
+            // 🟢 [엔진 버그 원천 차단] 쉼표(,)와 마침표(.)를 사용해 문장을 명확히 끊어주어 
+            // 음성 엔진이 멋대로 글자를 축약하거나 생략하지 못하게 강제 고정했습니다.
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo}. ${pureStudentName} 학생이. 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
             utterance.lang = 'ko-KR'; 
-            utterance.rate = 0.90; 
+            utterance.rate = 0.88; // 또박또박 읽도록 속도를 조금 더 안정적으로 낮췄습니다.
             utterance.pitch = 1.0; 
             window.speechSynthesis.speak(utterance); 
         } 
@@ -126,7 +126,6 @@
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    // 🟢 실시간 변경 데이터에서 추출한 과목(subject)을 포함하여 안전하게 전달합니다.
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
