@@ -67,7 +67,7 @@
     function speakCall(teacherName, studentInfo, studentName) { 
         if ('speechSynthesis' in window && isAudioUnlocked) { 
             
-            // 1. 선생님 이름 완벽 정제
+            // 1. 선생님 이름 정제
             let cleanTeacherName = teacherName
                 .replace(" 선생님", "")
                 .replace(" 교감선생님", "교감")
@@ -78,7 +78,7 @@
                 .replace(/선생님/g, "")
                 .trim();
 
-            // 2. [버그 박멸 핵심] DB에 '김태훈', '김태훈학생', '김태훈 학생' 등 어떻게 들어와있든 무조건 이름만 추출
+            // 2. 학생 이름 가공 (어떤 데이터가 오든 순수한 이름만 남기기)
             let pureStudentName = studentName
                 .replace(/학생/g, "")
                 .replace(/이/g, "")
@@ -86,8 +86,7 @@
                 
             let tightStudentInfo = studentInfo.replace(/\s+/g, ""); 
             
-            // 🟢 강제로 정확히 딱 한번만 "학생이"가 붙도록 문장 조합
-            // 결과: "이주영 선생님, 3학년6반4번김태훈 학생이 호출하였습니다."
+            // 🟢 정확하게 딱 한 번만 "학생이 호출하였습니다." 문자열 빌드
             const textToSpeak = `${cleanTeacherName} 선생님, ${tightStudentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -106,7 +105,7 @@
         
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
-            const silentUtterance = new SpeechSynthesisUtterance('');
+            const silentUtterance = new SynthesisUtterance('');
             silentUtterance.volume = 0;
             window.speechSynthesis.speak(silentUtterance);
         }
@@ -133,7 +132,6 @@
                     displayTime = call.timestamp.split(' ')[4] || call.timestamp;
                 }
 
-                // UI 화면에도 깔끔하게 이름만 추출 후 "학생" 표시 고정
                 let uiStudentName = call.studentName.replace(/학생/g, "").trim();
 
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${uiStudentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${call.teacherName}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
@@ -141,7 +139,7 @@
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
-                    // 무조건 call.studentName만 던져서 완벽 제어합니다.
+                    // 🟢 [완벽 해결] 꼬이게 만들던 모든 복병 변수(callForm 등)를 완벽히 지우고, 무조건 call.studentName만 매개변수로 던집니다.
                     speakCall(call.teacherName, call.studentInfo, call.studentName); 
                 } else if (isFirstLoad) { 
                     spokenCalls.add(id); 
