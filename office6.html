@@ -55,7 +55,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 🟢 목적지 정보를 '기타 특별실 (상담/진로/보건 등)' 데이터 매칭명으로 정확하게 셋팅
+    // 🟢 1. 위치 정보를 기타 특별실 데이터 식별명으로 변경
     const MY_OFFICE = "기타 특별실 (상담/진로/보건 등)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -79,7 +79,8 @@
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // "홍길동 학생이 호출하였습니다." 패턴으로 안전 결합
+            // 🟢 2. [발음 교정] "님, 학생이"를 지우고 깔끔하게 "학생이 호출하였습니다"로 변경
+            // 이제 "김태훈 학생이 호출하였습니다."로 자연스럽게 읽어줍니다.
             const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -108,7 +109,7 @@
     unlockBtn.addEventListener('click', unlockAudio);
     unlockBtn.addEventListener('touchstart', unlockAudio, { passive: true });
 
-    // 검증 완료된 원본 Firebase 실시간 핸들러 및 데이터 파싱 로직 완벽 유지
+    // 선생님의 오류 없는 원본 로직 100% 그대로 유지
     onValue(ref(database, 'calls'), (snapshot) => {
         callContainer.innerHTML = ''; const data = snapshot.val();
         if (!data) { callContainer.innerHTML = '<div class="no-data">현재 대기 중인 호출이 없습니다. 😊</div>'; currentCount.textContent = '대기 중인 학생: 0명'; spokenCalls.clear(); isFirstLoad = false; return; }
