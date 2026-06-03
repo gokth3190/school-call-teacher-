@@ -55,7 +55,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 🟢 본교무실 정보 설정
     const MY_OFFICE = "본교무실 (본관 1층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -76,13 +75,16 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            // 2. 학생 이름 뒤의 '학생' 글자 제거
-            let pureStudentName = studentName.replace(/학생/g, "").trim();
+            // 2. 학생 이름 뒤의 너저분한 글자 제거 후 순수 이름만 추출
+            let pureStudentName = studentName
+                .replace(/학생/g, "")
+                .replace(/이/g, "")
+                .trim();
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 검증된 2학년 고유의 쉼표(,) + "님, 학생이" 조합 메커니즘을 그대로 적용
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 님, 학생이 호출하였습니다.`; 
+            // 🟢 [완벽 수정] "김태훈 학생이 호출하였습니다."로 들리도록 빌드 구조 변경
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
@@ -134,7 +136,7 @@
                 card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
-                // 🟢 버그를 터뜨리던 call.callForm 대신 무조건 순수 변수만 전송하도록 확실하게 구조 일치
+                // call.callForm의 복병 변수를 없애고 확실하게 일치
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
                     spokenCalls.add(id); 
                     speakCall(subject, call.teacherName, call.studentInfo, call.studentName); 
