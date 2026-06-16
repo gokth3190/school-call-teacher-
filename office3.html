@@ -55,7 +55,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
-    // 🟢 3학년 교무실 정보로 정확하게 변경
     const MY_OFFICE = "3학년 교무실 (동국관 4층)"; 
     
     const firebaseConfig = { apiKey: "AIzaSyAp6SY-nfj-epgvcc3QAHLlzAVBDx9hE6U", authDomain: "vibecoding-project-3ad00.firebaseapp.com", databaseURL: "https://vibecoding-project-3ad00-default-rtdb.firebaseio.com", projectId: "vibecoding-project-3ad00", storageBucket: "vibecoding-project-3ad00.firebasestorage.app", messagingSenderId: "836454758922", appId: "1:836454758922:web:98680d3f1c654bb3fd7df3", measurementId: "G-7ZW3KFHDS8" };
@@ -79,8 +78,8 @@
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // 🟢 오류를 발생시키지 않았던 검증된 2학년 고유의 쉼표(,) + "님, 학생이" 조합 메커니즘 유지
-            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 님, 학생이 호출하였습니다.`; 
+            // 💡 [수정] "님, 학생이" 문구를 지우고 자연스럽게 "~학생이 호출하였습니다"로 변경했습니다.
+            const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(textToSpeak); 
