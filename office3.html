@@ -74,11 +74,14 @@
                 .replace(/[()\s]/g, "")
                 .trim();
 
-            let pureStudentName = studentName.replace(/학생/g, "").trim();
+            // 💡 [수정] 학생이 이름 뒤에 '님' 이나 '학생'을 붙여서 보냈더라도 전부 강제로 제거합니다.
+            let pureStudentName = studentName
+                .replace(/학생/g, "")
+                .replace(/님/g, "")
+                .trim();
 
             const subjectText = subject ? `${subject} ` : "";
             
-            // 💡 [수정] "님, 학생이" 문구를 지우고 자연스럽게 "~학생이 호출하였습니다"로 변경했습니다.
             const textToSpeak = `${subjectText}${cleanTeacherName} 선생님, ${studentInfo} ${pureStudentName} 학생이 호출하였습니다.`; 
             
             window.speechSynthesis.cancel(); 
@@ -128,7 +131,10 @@
                 const subject = call.subject || ""; 
                 const displayTeacher = subject ? `[${subject}] ${call.teacherName}` : call.teacherName;
 
-                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${call.studentName.replace(/학생/g, "").trim()} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
+                // 💡 [수정] 화면에 표시되는 카드 내의 이름에서도 '님' 자를 제거하도록 필터를 적용했습니다.
+                let cardStudentName = call.studentName.replace(/학생/g, "").replace(/님/g, "").trim();
+
+                card.innerHTML = `<div class="card-header"><span class="student-tag">${call.studentInfo}</span><span class="time-tag">${displayTime}</span></div><div class="student-name">${cardStudentName} 학생</div><div class="target-teacher">📍 목적지: ${call.officeLocation}<br>🙋‍♂️ 호출: ${displayTeacher}</div><div class="reason-text">${call.reason}</div><button class="btn-complete" data-id="${id}">처리 완료</button>`;
                 callContainer.appendChild(card);
                 
                 if (!isFirstLoad && !spokenCalls.has(id)) { 
